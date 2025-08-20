@@ -49,7 +49,7 @@ class CodeExecutor {
           return ''
         },
         int: (x: any) => parseInt(String(x)),
-        map: (fn: Function, arr: any[]) => arr.map(fn),
+        map: (fn: (value: any, index: number, array: any[]) => any, arr: any[]) => arr.map(fn),
         list: (x: any) => Array.isArray(x) ? x : Array.from(x),
         sum: (arr: number[]) => arr.reduce((a, b) => a + b, 0),
         len: (x: any) => x.length,
