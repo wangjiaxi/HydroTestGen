@@ -176,7 +176,7 @@ if __name__ == '__main__':
         {/* 头部 */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            Hydro 测试数据生成器
+            测试数据生成器
           </h1>
           <p className="text-gray-600 mb-4">
             基于Hydro的测试数据生成功能，支持Python和C++生成器
@@ -350,7 +350,7 @@ if __name__ == '__main__':
           </div>
 
           {/* 右侧：结果显示区 */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="bg-white rounded-lg shadow-lg p-6 lg:sticky lg:top-6 lg:h-[calc(100vh-200px)] flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">
                 生成结果
@@ -365,7 +365,7 @@ if __name__ == '__main__':
               )}
             </div>
             
-            <div className="space-y-4 max-h-96 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto space-y-4">
               {testCases.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <p>点击"生成"按钮开始生成测试数据</p>

@@ -4,8 +4,8 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Hydro测试数据生成器',
-  description: '基于Hydro的在线测试数据生成工具',
+  title: '测试数据生成器',
+  description: '在线测试数据生成工具',
 }
 
 export default function RootLayout({
