@@ -227,8 +227,6 @@ class CodeExecutor {
       }
     }
   }
-
-}
 }
 
 export async function POST(request: NextRequest) {
