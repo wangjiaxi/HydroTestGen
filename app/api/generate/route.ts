@@ -48,12 +48,29 @@ async function runWithSpawn(command: string, args: string[], options: { input?: 
 	})
 }
 
+async function tryRun(commands: string[], args: string[], options: { input?: string, timeoutMs?: number } = {}): Promise<{ stdout: string, stderr: string, used: string }> {
+	let lastErr: any = null
+	for (const cmd of commands) {
+		try {
+			const res = await runWithSpawn(cmd, args, options)
+			return { ...res, used: cmd }
+		} catch (err: any) {
+			lastErr = err
+			if (err && (err.code === 'ENOENT' || /ENOENT/.test(String(err)))) {
+				continue
+			}
+			throw err
+		}
+	}
+	throw new Error(`未找到可用的命令: ${commands.join('/')}. 原因: ${lastErr ? String(lastErr) : '未知'}`)
+}
+
 async function runPython(code: string, stdin?: string): Promise<string> {
 	const tmpDir = os.tmpdir()
 	const file = path.join(tmpDir, `exec-${Date.now()}-${Math.random().toString(36).slice(2)}.py`)
 	await fs.writeFile(file, code, 'utf8')
 	try {
-		const { stdout } = await runWithSpawn('python3', [file], { input: stdin, timeoutMs: 8000 })
+		const { stdout } = await tryRun(['python3', 'python'], [file], { input: stdin, timeoutMs: 8000 })
 		return stdout
 	} finally {
 		await fs.unlink(file).catch(() => {})
@@ -61,7 +78,7 @@ async function runPython(code: string, stdin?: string): Promise<string> {
 }
 
 async function compileCpp(sourcePath: string, outputPath: string) {
-	await runWithSpawn('g++', ['-std=c++17', '-O2', sourcePath, '-o', outputPath], { timeoutMs: 15000 })
+	await tryRun(['g++', 'clang++', 'c++'], ['-std=c++17', '-O2', sourcePath, '-o', outputPath], { timeoutMs: 15000 })
 }
 
 async function runCpp(code: string, stdin?: string): Promise<string> {
