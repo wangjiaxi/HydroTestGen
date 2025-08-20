@@ -118,7 +118,7 @@ class CodeExecutor {
           // 读取输入并求和
           const input = context.input()
           if (input) {
-            const nums = input.split(' ').map(x => context.int(x))
+            const nums = input.split(' ').map((x: string) => context.int(x))
             const result = context.sum(nums)
             context.print(result)
           }
