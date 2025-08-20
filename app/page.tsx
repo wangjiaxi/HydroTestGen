@@ -1,17 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 
 // 动态导入Monaco编辑器以避免SSR问题
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
-
-interface TestFile {
-  name: string
-  content: string
-  size: number
-  type: 'generator' | 'standard' | 'input' | 'output'
-}
 
 interface TestCase {
   input: string
@@ -20,73 +13,89 @@ interface TestCase {
 }
 
 export default function Home() {
-  const [files, setFiles] = useState<TestFile[]>([])
-  const [generatorCode, setGeneratorCode] = useState(`# Hydro测试数据生成器示例
+  const [generatorCode, setGeneratorCode] = useState(`# Python数据生成器示例
 import random
 
 def generate_test_case():
-    # 生成数组长度
-    n = random.randint(1, 100)
-    print(n)
-    
-    # 生成数组元素
-    arr = [random.randint(1, 1000) for _ in range(n)]
-    print(' '.join(map(str, arr)))
+    # 生成两个随机数
+    a = random.randint(1, 100)
+    b = random.randint(1, 100)
+    print(a, b)
 
 if __name__ == '__main__':
     generate_test_case()`)
   
-  const [standardCode, setStandardCode] = useState(`# 标准程序示例
+  const [standardCode, setStandardCode] = useState(`# Python标准程序示例
 def solve():
-    n = int(input())
-    arr = list(map(int, input().split()))
-    
-    # 示例：求数组和
-    result = sum(arr)
-    print(result)
+    a, b = map(int, input().split())
+    print(a + b)
 
 if __name__ == '__main__':
     solve()`)
 
-  // 从localStorage加载保存的代码
-  useState(() => {
-    if (typeof window !== 'undefined') {
-      const savedGenerator = localStorage.getItem('hydroGenerator')
-      const savedStandard = localStorage.getItem('hydroStandard')
-      if (savedGenerator) setGeneratorCode(savedGenerator)
-      if (savedStandard) setStandardCode(savedStandard)
-    }
-  })
+  const [generatorLang, setGeneratorLang] = useState<'python' | 'cpp'>('python')
+  const [standardLang, setStandardLang] = useState<'python' | 'cpp'>('python')
   
   const [testCases, setTestCases] = useState<TestCase[]>([])
   const [loading, setLoading] = useState(false)
   const [numCases, setNumCases] = useState(5)
-  const [activeTab, setActiveTab] = useState<'files' | 'generator'>('files')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const generatorFileRef = useRef<HTMLInputElement>(null)
+  const standardFileRef = useRef<HTMLInputElement>(null)
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFiles = event.target.files
-    if (!uploadedFiles) return
-
-    Array.from(uploadedFiles).forEach(file => {
+  // 文件拖拽处理
+  const handleFileDrop = useCallback((e: React.DragEvent, type: 'generator' | 'standard') => {
+    e.preventDefault()
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      const file = files[0]
       const reader = new FileReader()
-      reader.onload = (e) => {
-        const content = e.target?.result as string
-        const newFile: TestFile = {
-          name: file.name,
-          content,
-          size: file.size,
-          type: file.name.includes('gen') ? 'generator' : 
-                file.name.includes('std') ? 'standard' : 'input'
+      reader.onload = (event) => {
+        const content = event.target?.result as string
+        if (type === 'generator') {
+          setGeneratorCode(content)
+          // 根据文件扩展名设置语言
+          if (file.name.endsWith('.cpp') || file.name.endsWith('.cc')) {
+            setGeneratorLang('cpp')
+          } else {
+            setGeneratorLang('python')
+          }
+        } else {
+          setStandardCode(content)
+          if (file.name.endsWith('.cpp') || file.name.endsWith('.cc')) {
+            setStandardLang('cpp')
+          } else {
+            setStandardLang('python')
+          }
         }
-        setFiles(prev => [...prev, newFile])
       }
       reader.readAsText(file)
-    })
-  }
+    }
+  }, [])
 
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index))
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: 'generator' | 'standard') => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const content = e.target?.result as string
+      if (type === 'generator') {
+        setGeneratorCode(content)
+        if (file.name.endsWith('.cpp') || file.name.endsWith('.cc')) {
+          setGeneratorLang('cpp')
+        } else {
+          setGeneratorLang('python')
+        }
+      } else {
+        setStandardCode(content)
+        if (file.name.endsWith('.cpp') || file.name.endsWith('.cc')) {
+          setStandardLang('cpp')
+        } else {
+          setStandardLang('python')
+        }
+      }
+    }
+    reader.readAsText(file)
   }
 
   const generateTestData = async () => {
@@ -99,7 +108,9 @@ if __name__ == '__main__':
         },
         body: JSON.stringify({
           generator: generatorCode,
+          generatorLang: generatorLang,
           standard: standardCode,
+          standardLang: standardLang,
           numCases: numCases
         }),
       })
@@ -116,37 +127,47 @@ if __name__ == '__main__':
     setLoading(false)
   }
 
-  const downloadTestCases = () => {
-    const zip = testCases.map((tc, i) => 
-      `=== 测试点 ${i + 1} ===\n输入:\n${tc.input}\n输出:\n${tc.output}\n`
-    ).join('\n')
+  // 下载ZIP文件
+  const downloadZip = async () => {
+    if (testCases.length === 0) return
+
+    // 创建ZIP文件内容
+    const JSZip = (await import('jszip')).default
+    const zip = new JSZip()
     
-    const blob = new Blob([zip], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
+    testCases.forEach((tc, i) => {
+      zip.file(`${i + 1}.in`, tc.input)
+      zip.file(`${i + 1}.out`, tc.output)
+    })
+    
+    const content = await zip.generateAsync({ type: 'blob' })
+    const url = URL.createObjectURL(content)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'hydro_testcases.txt'
+    a.download = 'testcases.zip'
     a.click()
+    URL.revokeObjectURL(url)
   }
 
-  const downloadSeparateFiles = () => {
-    testCases.forEach((tc, i) => {
-      // 下载输入文件
-      const inputBlob = new Blob([tc.input], { type: 'text/plain' })
-      const inputUrl = URL.createObjectURL(inputBlob)
-      const inputLink = document.createElement('a')
-      inputLink.href = inputUrl
-      inputLink.download = `${i + 1}.in`
-      inputLink.click()
-      
-      // 下载输出文件
-      const outputBlob = new Blob([tc.output], { type: 'text/plain' })
-      const outputUrl = URL.createObjectURL(outputBlob)
-      const outputLink = document.createElement('a')
-      outputLink.href = outputUrl
-      outputLink.download = `${i + 1}.out`
-      outputLink.click()
-    })
+  // 下载单个测试点
+  const downloadSingleCase = (testCase: TestCase, index: number) => {
+    // 下载输入文件
+    const inputBlob = new Blob([testCase.input], { type: 'text/plain' })
+    const inputUrl = URL.createObjectURL(inputBlob)
+    const inputLink = document.createElement('a')
+    inputLink.href = inputUrl
+    inputLink.download = `${index + 1}.in`
+    inputLink.click()
+    URL.revokeObjectURL(inputUrl)
+    
+    // 下载输出文件
+    const outputBlob = new Blob([testCase.output], { type: 'text/plain' })
+    const outputUrl = URL.createObjectURL(outputBlob)
+    const outputLink = document.createElement('a')
+    outputLink.href = outputUrl
+    outputLink.download = `${index + 1}.out`
+    outputLink.click()
+    URL.revokeObjectURL(outputUrl)
   }
 
   return (
@@ -158,7 +179,7 @@ if __name__ == '__main__':
             Hydro 测试数据生成器
           </h1>
           <p className="text-gray-600 mb-4">
-            基于Hydro的测试数据生成功能，支持Python生成器和标准程序
+            基于Hydro的测试数据生成功能，支持Python和C++生成器
           </p>
           <div className="flex justify-center gap-4">
             <a
@@ -169,300 +190,224 @@ if __name__ == '__main__':
             </a>
             <button
               onClick={() => {
-                const savedGen = localStorage.getItem('hydroGenerator')
-                const savedStd = localStorage.getItem('hydroStandard')
-                if (savedGen) setGeneratorCode(savedGen)
-                if (savedStd) setStandardCode(savedStd)
+                localStorage.setItem('hydroGenerator', generatorCode)
+                localStorage.setItem('hydroStandard', standardCode)
+                alert('代码已保存')
               }}
               className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
             >
-              📥 加载保存的代码
+              💾 保存代码
             </button>
           </div>
         </div>
 
-        {/* 标签页 */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('files')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'files'
-                    ? 'border-hydro-blue text-hydro-blue'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+          {/* 左侧：代码编辑区 */}
+          <div className="space-y-6">
+            {/* 数据生成器 */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  🔧 数据生成器
+                </h3>
+                <div className="flex gap-2">
+                  <select
+                    value={generatorLang}
+                    onChange={(e) => setGeneratorLang(e.target.value as 'python' | 'cpp')}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm"
+                  >
+                    <option value="python">Python</option>
+                    <option value="cpp">C++</option>
+                  </select>
+                  <button
+                    onClick={() => generatorFileRef.current?.click()}
+                    className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                  >
+                    📁 上传文件
+                  </button>
+                </div>
+              </div>
+              
+              <input
+                ref={generatorFileRef}
+                type="file"
+                accept=".py,.cpp,.cc,.c"
+                onChange={(e) => handleFileUpload(e, 'generator')}
+                className="hidden"
+              />
+              
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden hover:border-hydro-blue transition-colors"
+                onDrop={(e) => handleFileDrop(e, 'generator')}
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnter={(e) => e.preventDefault()}
               >
-                📁 测试数据文件
-              </button>
-              <button
-                onClick={() => setActiveTab('generator')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'generator'
-                    ? 'border-hydro-blue text-hydro-blue'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                🔧 生成测试数据
-              </button>
-            </nav>
-          </div>
-        </div>
+                <MonacoEditor
+                  height="300px"
+                  language={generatorLang}
+                  theme="vs-light"
+                  value={generatorCode}
+                  onChange={(value) => setGeneratorCode(value || '')}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                支持拖拽文件到编辑器或点击上传按钮
+              </p>
+            </div>
 
-        {/* 文件管理标签页 */}
-        {activeTab === 'files' && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">测试数据文件</h2>
-              <div className="flex gap-2">
+            {/* 标准程序 */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  ✅ 标准程序
+                </h3>
+                <div className="flex gap-2">
+                  <select
+                    value={standardLang}
+                    onChange={(e) => setStandardLang(e.target.value as 'python' | 'cpp')}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm"
+                  >
+                    <option value="python">Python</option>
+                    <option value="cpp">C++</option>
+                  </select>
+                  <button
+                    onClick={() => standardFileRef.current?.click()}
+                    className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                  >
+                    📁 上传文件
+                  </button>
+                </div>
+              </div>
+              
+              <input
+                ref={standardFileRef}
+                type="file"
+                accept=".py,.cpp,.cc,.c"
+                onChange={(e) => handleFileUpload(e, 'standard')}
+                className="hidden"
+              />
+              
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden hover:border-hydro-blue transition-colors"
+                onDrop={(e) => handleFileDrop(e, 'standard')}
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnter={(e) => e.preventDefault()}
+              >
+                <MonacoEditor
+                  height="300px"
+                  language={standardLang}
+                  theme="vs-light"
+                  value={standardCode}
+                  onChange={(value) => setStandardCode(value || '')}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                支持拖拽文件到编辑器或点击上传按钮
+              </p>
+            </div>
+
+            {/* 生成控制 */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex items-center gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    测试点数量
+                  </label>
+                  <input
+                    type="number"
+                    value={numCases}
+                    onChange={(e) => setNumCases(parseInt(e.target.value) || 1)}
+                    min="1"
+                    max="20"
+                    className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-hydro-blue"
+                  />
+                </div>
+                
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-hydro-blue text-white rounded-md hover:bg-hydro-dark"
+                  onClick={generateTestData}
+                  disabled={loading}
+                  className="px-6 py-2 bg-hydro-blue text-white rounded-md hover:bg-hydro-dark disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  📤 上传文件
-                </button>
-                <button className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                  ⚙️ 配置
-                </button>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                  ➕ 创建
+                  {loading ? '⏳ 生成中...' : '🚀 生成'}
                 </button>
               </div>
             </div>
+          </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept=".py,.txt,.in,.out"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-
-            {/* 文件列表 */}
-            <div className="border border-gray-200 rounded-lg">
-              <div className="grid grid-cols-12 gap-4 p-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-700">
-                <div className="col-span-1">
-                  <input type="checkbox" className="rounded" />
-                </div>
-                <div className="col-span-6">文件名</div>
-                <div className="col-span-2">大小</div>
-                <div className="col-span-3">操作</div>
-              </div>
-              
-              {files.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <div className="mb-4">📁</div>
-                  <p>暂无文件，请上传测试数据文件</p>
-                  <p className="text-sm mt-2">支持 .py, .txt, .in, .out 格式</p>
+          {/* 右侧：结果显示区 */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                📊 生成结果
+              </h3>
+              {testCases.length > 0 && (
+                <button
+                  onClick={downloadZip}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                >
+                  📦 下载ZIP
+                </button>
+              )}
+            </div>
+            
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {testCases.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <div className="text-4xl mb-4">📊</div>
+                  <p>点击"生成"按钮开始生成测试数据</p>
                 </div>
               ) : (
-                files.map((file, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-4 p-3 border-b border-gray-100 hover:bg-gray-50">
-                    <div className="col-span-1">
-                      <input type="checkbox" className="rounded" />
-                    </div>
-                    <div className="col-span-6 flex items-center">
-                      <span className="mr-2">
-                        {file.type === 'generator' ? '🔧' : 
-                         file.type === 'standard' ? '✅' : '📄'}
-                      </span>
-                      {file.name}
-                    </div>
-                    <div className="col-span-2 text-gray-600">
-                      {file.size} Bytes
-                    </div>
-                    <div className="col-span-3">
+                testCases.map((testCase, index) => (
+                  <div key={index} className="test-case-card border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-medium text-gray-800">
+                        📝 测试点 {index + 1}
+                      </h4>
                       <button
-                        onClick={() => removeFile(index)}
-                        className="text-red-600 hover:text-red-800 mr-2"
+                        onClick={() => downloadSingleCase(testCase, index)}
+                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
                       >
-                        🗑️
+                        📥 下载
                       </button>
-                      <button className="text-blue-600 hover:text-blue-800">
-                        ✏️
-                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <span className="text-sm font-medium text-gray-600 block mb-1">
+                          📥 输入:
+                        </span>
+                        <pre className="bg-gray-50 p-3 rounded text-sm font-mono overflow-x-auto border max-h-20 overflow-y-auto">
+                          {testCase.input}
+                        </pre>
+                      </div>
+                      {testCase.output && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-600 block mb-1">
+                            📤 输出:
+                          </span>
+                          <pre className="bg-gray-50 p-3 rounded text-sm font-mono overflow-x-auto border max-h-20 overflow-y-auto">
+                            {testCase.output}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
               )}
             </div>
-
-            {files.length > 0 && (
-              <div className="mt-4 flex gap-2">
-                <button className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
-                  📥 下载选中
-                </button>
-                <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
-                  🗑️ 移除选中
-                </button>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                  📝 重命名选中
-                </button>
-              </div>
-            )}
           </div>
-        )}
-
-        {/* 生成器标签页 */}
-        {activeTab === 'generator' && (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* 代码编辑区 */}
-            <div className="space-y-6">
-              {/* 数据生成器 */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                  🔧 数据生成器
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  数据生成器是一个生成测试数据的程序。它应该将结果输出到标准输出。
-                </p>
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  <MonacoEditor
-                    height="300px"
-                    language="python"
-                    theme="vs-light"
-                    value={generatorCode}
-                    onChange={(value) => setGeneratorCode(value || '')}
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 14,
-                      lineNumbers: 'on',
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* 标准程序 */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                  ✅ 标准程序
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  标准程序是一个解决问题的程序。它应该将答案输出到标准输出。
-                </p>
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  <MonacoEditor
-                    height="300px"
-                    language="python"
-                    theme="vs-light"
-                    value={standardCode}
-                    onChange={(value) => setStandardCode(value || '')}
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 14,
-                      lineNumbers: 'on',
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* 生成控制 */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      测试点数量
-                    </label>
-                    <input
-                      type="number"
-                      value={numCases}
-                      onChange={(e) => setNumCases(parseInt(e.target.value) || 1)}
-                      min="1"
-                      max="20"
-                      className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-hydro-blue"
-                    />
-                  </div>
-                  
-                  <button
-                    onClick={generateTestData}
-                    disabled={loading}
-                    className="px-6 py-2 bg-hydro-blue text-white rounded-md hover:bg-hydro-dark disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? '⏳ 生成中...' : '🚀 生成'}
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      localStorage.setItem('hydroGenerator', generatorCode)
-                      localStorage.setItem('hydroStandard', standardCode)
-                      alert('代码已保存到本地存储')
-                    }}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-                  >
-                    💾 保存代码
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* 结果显示区 */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  📊 生成结果
-                </h3>
-                {testCases.length > 0 && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={downloadTestCases}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
-                    >
-                      📥 下载合并文件
-                    </button>
-                    <button
-                      onClick={downloadSeparateFiles}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                    >
-                      📦 下载分离文件
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {testCases.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <div className="text-4xl mb-4">📊</div>
-                    <p>点击"生成"按钮开始生成测试数据</p>
-                  </div>
-                ) : (
-                  testCases.map((testCase, index) => (
-                    <div key={index} className="test-case-card border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-800 mb-3">
-                        📝 测试点 {index + 1}
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3">
-                        <div>
-                          <span className="text-sm font-medium text-gray-600 block mb-1">
-                            📥 输入:
-                          </span>
-                          <pre className="bg-gray-50 p-3 rounded text-sm font-mono overflow-x-auto border">
-                            {testCase.input}
-                          </pre>
-                        </div>
-                        {testCase.output && (
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 block mb-1">
-                              📤 输出:
-                            </span>
-                            <pre className="bg-gray-50 p-3 rounded text-sm font-mono overflow-x-auto border">
-                              {testCase.output}
-                            </pre>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 使用说明 */}
         <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
