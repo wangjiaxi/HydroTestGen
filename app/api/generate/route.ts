@@ -35,7 +35,7 @@ class PythonExecutor {
       str: (obj: any) => String(obj),
       int: (obj: any) => parseInt(obj),
       list: (obj: any) => Array.from(obj),
-      map: (fn: Function, arr: any[]) => arr.map(fn),
+      map: (fn: (value: any, index: number, array: any[]) => any, arr: any[]) => arr.map(fn),
       sum: (arr: number[]) => arr.reduce((a, b) => a + b, 0),
       max: (arr: number[]) => Math.max(...arr),
       min: (arr: number[]) => Math.min(...arr),
