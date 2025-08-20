@@ -209,7 +209,7 @@ export default function Examples() {
                   )}
                   className="px-4 py-2 bg-hydro-blue text-white rounded-md hover:bg-hydro-dark"
                 >
-                  🚀 使用此模板
+                  使用此模板
                 </button>
               </div>
               
@@ -221,13 +221,13 @@ export default function Examples() {
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-medium text-gray-800">
-                    🔧 数据生成器
+                    数据生成器
                   </h3>
                   <button
                     onClick={() => copyToClipboard(examples[selectedExample].generator, '生成器')}
                     className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
                   >
-                    📋 复制
+                    复制
                   </button>
                 </div>
                 <pre className="bg-gray-50 p-4 rounded-lg text-sm font-mono overflow-x-auto border">
@@ -239,13 +239,13 @@ export default function Examples() {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-medium text-gray-800">
-                    ✅ 标准程序
+                    标准程序
                   </h3>
                   <button
                     onClick={() => copyToClipboard(examples[selectedExample].standard, '标准程序')}
                     className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
                   >
-                    📋 复制
+                    复制
                   </button>
                 </div>
                 <pre className="bg-gray-50 p-4 rounded-lg text-sm font-mono overflow-x-auto border">
@@ -257,11 +257,11 @@ export default function Examples() {
             {/* 使用说明 */}
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                📖 使用说明
+                使用说明
               </h3>
               <div className="space-y-4 text-gray-700">
                 <div>
-                  <h4 className="font-medium mb-2">🔧 数据生成器说明</h4>
+                  <h4 className="font-medium mb-2">数据生成器说明</h4>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>使用Python的random模块生成随机数据</li>
                     <li>通过print()函数输出测试数据</li>
@@ -271,7 +271,7 @@ export default function Examples() {
                 </div>
                 
                 <div>
-                  <h4 className="font-medium mb-2">✅ 标准程序说明</h4>
+                  <h4 className="font-medium mb-2">标准程序说明</h4>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>读取生成器输出的数据作为输入</li>
                     <li>实现问题的正确解法</li>
@@ -281,7 +281,7 @@ export default function Examples() {
                 </div>
 
                 <div>
-                  <h4 className="font-medium mb-2">🚀 快速开始</h4>
+                  <h4 className="font-medium mb-2">快速开始</h4>
                   <ol className="list-decimal list-inside space-y-1 text-sm">
                     <li>选择一个适合的示例模板</li>
                     <li>点击"使用此模板"按钮</li>

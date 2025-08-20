@@ -186,7 +186,7 @@ if __name__ == '__main__':
               href="/examples"
               className="px-4 py-2 bg-hydro-blue text-white rounded-md hover:bg-hydro-dark"
             >
-              📚 查看示例
+              查看示例
             </a>
             <button
               onClick={() => {
@@ -196,18 +196,20 @@ if __name__ == '__main__':
               }}
               className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
             >
-              💾 保存代码
+              保存代码
             </button>
           </div>
         </div>
 
+        {/* 主要内容区域 - 2列布局 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* 左侧：代码编辑区 */}
           <div className="space-y-6">
             {/* 数据生成器 */}
             <div className="bg-white rounded-lg shadow-lg p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">
-                  🔧 数据生成器
+                  数据生成器
                 </h3>
                 <div className="flex gap-2">
                   <select
@@ -222,7 +224,7 @@ if __name__ == '__main__':
                     onClick={() => generatorFileRef.current?.click()}
                     className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
                   >
-                    📁 上传文件
+                    上传文件
                   </button>
                 </div>
               </div>
@@ -242,7 +244,7 @@ if __name__ == '__main__':
                 onDragEnter={(e) => e.preventDefault()}
               >
                 <MonacoEditor
-                  height="300px"
+                  height="250px"
                   language={generatorLang}
                   theme="vs-light"
                   value={generatorCode}
@@ -265,7 +267,7 @@ if __name__ == '__main__':
             <div className="bg-white rounded-lg shadow-lg p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">
-                  ✅ 标准程序
+                  标准程序
                 </h3>
                 <div className="flex gap-2">
                   <select
@@ -280,7 +282,7 @@ if __name__ == '__main__':
                     onClick={() => standardFileRef.current?.click()}
                     className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
                   >
-                    📁 上传文件
+                    上传文件
                   </button>
                 </div>
               </div>
@@ -300,7 +302,7 @@ if __name__ == '__main__':
                 onDragEnter={(e) => e.preventDefault()}
               >
                 <MonacoEditor
-                  height="300px"
+                  height="250px"
                   language={standardLang}
                   theme="vs-light"
                   value={standardCode}
@@ -341,7 +343,7 @@ if __name__ == '__main__':
                   disabled={loading}
                   className="px-6 py-2 bg-hydro-blue text-white rounded-md hover:bg-hydro-dark disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? '⏳ 生成中...' : '🚀 生成'}
+                  {loading ? '生成中...' : '生成'}
                 </button>
               </div>
             </div>
@@ -351,14 +353,14 @@ if __name__ == '__main__':
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">
-                📊 生成结果
+                生成结果
               </h3>
               {testCases.length > 0 && (
                 <button
                   onClick={downloadZip}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
                 >
-                  📦 下载ZIP
+                  下载ZIP
                 </button>
               )}
             </div>
@@ -366,7 +368,6 @@ if __name__ == '__main__':
             <div className="space-y-4 max-h-96 overflow-y-auto">
               {testCases.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
-                  <div className="text-4xl mb-4">📊</div>
                   <p>点击"生成"按钮开始生成测试数据</p>
                 </div>
               ) : (
@@ -374,19 +375,19 @@ if __name__ == '__main__':
                   <div key={index} className="test-case-card border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="font-medium text-gray-800">
-                        📝 测试点 {index + 1}
+                        测试点 {index + 1}
                       </h4>
                       <button
                         onClick={() => downloadSingleCase(testCase, index)}
                         className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
                       >
-                        📥 下载
+                        下载
                       </button>
                     </div>
                     <div className="grid grid-cols-1 gap-3">
                       <div>
                         <span className="text-sm font-medium text-gray-600 block mb-1">
-                          📥 输入:
+                          输入:
                         </span>
                         <pre className="bg-gray-50 p-3 rounded text-sm font-mono overflow-x-auto border max-h-20 overflow-y-auto">
                           {testCase.input}
@@ -395,7 +396,7 @@ if __name__ == '__main__':
                       {testCase.output && (
                         <div>
                           <span className="text-sm font-medium text-gray-600 block mb-1">
-                            📤 输出:
+                            输出:
                           </span>
                           <pre className="bg-gray-50 p-3 rounded text-sm font-mono overflow-x-auto border max-h-20 overflow-y-auto">
                             {testCase.output}
@@ -408,13 +409,14 @@ if __name__ == '__main__':
               )}
             </div>
           </div>
+        </div>
 
         {/* 使用说明 */}
         <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">📖 使用说明</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">使用说明</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700">
             <div>
-              <h3 className="font-medium mb-2">🔧 数据生成器</h3>
+              <h3 className="font-medium mb-2">数据生成器</h3>
               <ul className="list-disc list-inside space-y-1 text-sm">
                 <li>使用Python编写生成测试数据的程序</li>
                 <li>程序应该输出测试数据到标准输出</li>
@@ -424,7 +426,7 @@ if __name__ == '__main__':
             </div>
             
             <div>
-              <h3 className="font-medium mb-2">✅ 标准程序</h3>
+              <h3 className="font-medium mb-2">标准程序</h3>
               <ul className="list-disc list-inside space-y-1 text-sm">
                 <li>使用Python编写解决问题的标准答案</li>
                 <li>程序读取生成器的输出作为输入</li>
